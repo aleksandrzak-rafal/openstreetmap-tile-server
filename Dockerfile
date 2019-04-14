@@ -85,10 +85,40 @@ RUN a2enconf mod_tile
 COPY apache.conf /etc/apache2/sites-available/000-default.conf
 USER renderer
 
+# Configure default webpage (for testing)
+RUN rm -f /var/www/html/index.html
+RUN wget --no-check-certificate -P/var/www/html/ https://cdn.acugis.com/osm-assets/htmls/openlayers-example.html
+RUN wget --no-check-certificate -P/var/www/html/ https://cdn.acugis.com/osm-assets/htmls/leaflet-example.html
+RUN wget --no-check-certificate -P/var/www/html/ https://cdn.acugis.com/osm-assets/htmls/index.html
+RUN sed -i.save "s|localhost|$(hostname -I | tr -d ' ')|" /var/www/html/leaflet-example.html
+
+RUN cat >/etc/apache2/sites-available/000-default.conf <<CMD_EOF
+<VirtualHost _default_:80>
+	ServerAdmin webmaster@localhost
+	Include /etc/apache2/sites-available/tile.conf
+	DocumentRoot /var/www/html
+	ServerName ${VHOST}
+ 
+	ErrorLog \${APACHE_LOG_DIR}/error.log
+	CustomLog \${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+CMD_EOF
+RUN ln -sf /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/
+
 # Install PostgreSQL
 USER root
 RUN apt-get install -y postgresql postgresql-contrib postgis postgresql-10-postgis-2.4
 USER renderer
+
+# Tune Postgres
+RUN sed -i 's/#\?shared_buffers.*/shared_buffers = 8MB/' /etc/postgresql/10/main/postgresql.conf
+RUN sed -i 's/#\?checkpoint_segments.*/checkpoint_segments = 60/' /etc/postgresql/10/main/postgresql.conf
+RUN sed -i 's/#\?maintenance_work_mem.*/maintenance_work_mem = 4096MB/' /etc/postgresql/10/main/postgresql.conf
+RUN sed -i 's/#\?random_page_cost.*/random_page_cost = 1.1/' /etc/postgresql/10/main/postgresql.conf
+RUN sed -i 's/#\?fsync.*/fsync = off/' /etc/postgresql/10/main/postgresql.conf
+RUN sed -i 's/#\?max_connections.*/max_connections = 300/' /etc/postgresql/10/main/postgresql.conf
+
+RUN systemctl restart postgresql
 
 # Start running
 USER root

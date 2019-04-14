@@ -26,8 +26,17 @@ if [ "$1" = "import" ]; then
         wget -nv http://download.geofabrik.de/europe/luxembourg-latest.osm.pbf -O /data.osm.pbf
     fi
 
+    # Turn off autovacuum and fsync
+	sed -i 's/#\?autovacuum.*/autovacuum = off/' /etc/postgresql/10/main/postgresql.conf
+ 
+	systemctl restart postgresql
+
     # Import data
-    sudo -u renderer osm2pgsql -d gis --create --slim -G --hstore --tag-transform-script /home/renderer/src/openstreetmap-carto/openstreetmap-carto.lua -C 2048 --number-processes ${THREADS:-4} -S /home/renderer/src/openstreetmap-carto/openstreetmap-carto.style /data.osm.pbf
+    sudo -u renderer osm2pgsql -d gis --create --slim -G --hstore --flat-nodes --tag-transform-script /home/renderer/src/openstreetmap-carto/openstreetmap-carto.lua -C 12288 --number-processes ${THREADS:-4} -S /home/renderer/src/openstreetmap-carto/openstreetmap-carto.style /data.osm.pbf
+
+	sed -i.save 's/#\?autovacuum.*/autovacuum = on/' /etc/postgresql/10/main/postgresql.conf
+
+    systemctl restart postgresql
 
     exit 0
 fi
