@@ -85,25 +85,12 @@ RUN a2enconf mod_tile
 COPY apache.conf /etc/apache2/sites-available/000-default.conf
 USER renderer
 
-# Configure default webpage (for testing)
+# Configure default webpage (for testing, not working)
 RUN rm -f /var/www/html/index.html
 RUN wget --no-check-certificate -P/var/www/html/ https://cdn.acugis.com/osm-assets/htmls/openlayers-example.html
 RUN wget --no-check-certificate -P/var/www/html/ https://cdn.acugis.com/osm-assets/htmls/leaflet-example.html
 RUN wget --no-check-certificate -P/var/www/html/ https://cdn.acugis.com/osm-assets/htmls/index.html
 RUN sed -i.save "s|localhost|$(hostname -I | tr -d ' ')|" /var/www/html/leaflet-example.html
-
-RUN cat >/etc/apache2/sites-available/000-default.conf <<CMD_EOF
-<VirtualHost _default_:80>
-	ServerAdmin webmaster@localhost
-	Include /etc/apache2/sites-available/tile.conf
-	DocumentRoot /var/www/html
-	ServerName ${VHOST}
- 
-	ErrorLog \${APACHE_LOG_DIR}/error.log
-	CustomLog \${APACHE_LOG_DIR}/access.log combined
-</VirtualHost>
-CMD_EOF
-RUN ln -sf /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/
 
 # Install PostgreSQL
 USER root
